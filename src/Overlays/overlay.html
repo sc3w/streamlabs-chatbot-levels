@@ -1,8 +1,100 @@
 <html>
   <head>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
     <script src="../API_Key.js"></script>
   </head>
   <body>
+
+    <div id="track">
+      <div id="progress"></div>
+      <div id="text"></div>
+    </div>
+
+    <script>
+    $(document).ready(function() {	
+      // Show an error message if the API key file is not loaded
+      if (typeof API_Key === "undefined") {
+        $("body").html("No API Key found or load!<br>Rightclick on the Scoreboard script in AnkhBot and select \"Insert API Key\"");
+        $("body").css({"font-size": "20px", "color": "#ff8080", "text-align": "center"});
+      }
+      // Connect to the Streamlabs Chatbot websocket
+      else {
+        connectWebsocket();
+      }
+    });
+
+    function initWidget(eventData) {
+      var $track = $('#track');
+      var $progress = $('#progress');
+      var $text = $('#text');
+
+      $track.css({
+        width: '100%',
+        position: 'relative',
+        height: eventData.height + 'px',
+        overflow: 'hidden',
+        backgroundColor: eventData.trackColor,
+        borderRadius: eventData.borderRadius + 'px',
+      });
+
+      $progress.css({
+        width: '33%',
+        height: eventData.height + 'px',
+        backgroundColor: eventData.progressBarColor,
+      });
+
+      $text.css({
+        width: '100%',
+        position: 'absolute',
+        top: 0,
+        textAlign: 'center',
+        fontFamily: 'Arial, Helvetica, sans-serif',
+        color: eventData.fontColor,
+        fontSize: eventData.fontSize + 'px',
+        lineHeight: eventData.height + 'px',
+      });
+
+      $text.text(eventData.text);
+    }
+
+    function connectWebsocket() {
+      // Create the websocket connection
+      var socket = new WebSocket("ws://127.0.0.1:3337/streamlabs");
+      // WS OnOpen event : authenticate
+      socket.onopen = function() {
+        // Create authentication payload and request required events
+        var auth = {
+          author: "sc3w",
+          website: "https://sc3w.net",
+          api_key: API_Key,
+          events: [
+            "LEVELS_INIT"
+          ]
+        };
+        // Send authentication payload to Streamlabs Chatbot
+        socket.send(JSON.stringify(auth));
+      };
+
+      // Ws OnClose : try reconnect
+      socket.onclose = function() {
+        socket = null;
+        setTimeout(connectWebsocket, 5000);
+      };
+
+      // WS OnMessage event : handle events
+      socket.onmessage = function (message) {
+        // Parse message data to extract event name
+        var socketMessage = JSON.parse(message.data);
+        console.log(socketMessage);
+        // SUBATHON_UPDATE
+        if (socketMessage.event == "LEVELS_INIT") {
+          var eventData = JSON.parse(socketMessage.data);
+          initWidget(eventData)
+        }
+      };
+    };
+    
+    </script>
 
   </body>
 </html>

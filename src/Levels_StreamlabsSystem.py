@@ -34,21 +34,47 @@ ScriptSettings = MySettings()
 #   Script Functions
 #---------------------------
 
+def LogSettings():
+    Parent.Log(ScriptName, "Settings:")
+
+    for key in ScriptSettings.__dict__:
+        value = ScriptSettings.__dict__[key]
+        Parent.Log(ScriptName, "%s: %s" % (key, value))
+
+    return
+
+def GetOverlayText():
+    return ScriptSettings.OverlayWidgetCurrentLevelMessage.format(1)
+
+def SendInitMessage():
+    payload = {
+		"height": ScriptSettings.OverlayWidgetHeight,
+        "fontSize": ScriptSettings.OverlayWidgetFontSize,
+        "fontColor": ScriptSettings.OverlayWidgetFontColor,
+        "trackColor": ScriptSettings.OverlayWidgetProgressBarTrackColor,
+        "progressBarColor": ScriptSettings.OverlayWidgetProgressBarColor,
+        "borderRadius": ScriptSettings.OverlayWidgetBorderRadius,
+        "text": GetOverlayText()
+	}
+
+    Parent.BroadcastWsEvent("LEVELS_INIT",json.dumps(payload))
+
 #---------------------------
 #   Lifecycle Functions
 #---------------------------
 
 def Init():
 
-    #   Create Settings Directory
+    # Create Settings Directory
     directory = os.path.join(os.path.dirname(__file__), "Settings")
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-    #   Load settings
+    # Load settings
     SettingsFile = os.path.join(os.path.dirname(__file__), "Settings\settings.json")
     ScriptSettings = MySettings(SettingsFile)
-    ScriptSettings.Response = "Overwritten pong! ^_^"
+
+    SendInitMessage()
     return
 
 
@@ -79,8 +105,9 @@ def Parse(parseString, userid, username, targetid, targetname, message):
 
 
 def ReloadSettings(jsonData):
-    # Execute json reloading here
-    ScriptSettings.__dict__ = json.loads(jsonData)
+    # this is never called due to a known issue:
+    # https://github.com/AnkhHeart/Streamlabs-Chatbot-Python-Boilerplate/issues/7
+    ScriptSettings.Reload(jsonData)
     ScriptSettings.Save(SettingsFile)
     return
 
@@ -88,6 +115,17 @@ def ReloadSettings(jsonData):
 def Unload():
     return
     
+def Load():
+    SendInitMessage()
+    return
 
 def ScriptToggled(state):
+
+    if not state:
+        Unload()
+    else:
+        Init()
+
+    LogSettings()
+
     return
