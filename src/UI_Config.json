@@ -1,42 +1,116 @@
 {
     "output_file": "Settings/settings.json",
-    "Command": {
+    "Levels": {
+      "type": "numberbox",
+      "value": "3",
+      "label": "Number of levels",
+      "tooltip": "The number of levels to divide your uptime into.",
+      "group": "Levels"
+    },
+    "LevelMaxTime": {
+      "type": "numberbox",
+      "value": "80",
+      "label": "Maximum length of each level in minutes",
+      "tooltip": "The maximum length of a level.",
+      "group": "Levels"
+    },
+
+    "Tier1SubProgress": {
+      "type": "numberbox",
+      "value": "5",
+      "label": "Tier 1 subscription progress in minutes",
+      "tooltip": "How many minutes to progress in case of a new tier 1 sub.",
+      "group": "On Subscription"
+    },
+    "Tier2SubProgress": {
+      "type": "numberbox",
+      "value": "10",
+      "label": "Tier 2 subscription progress in minutes",
+      "tooltip": "How many minutes to progress in case of a new tier 2 sub.",
+      "group": "On Subscription"
+    },
+    "Tier3SubProgress": {
+      "type": "numberbox",
+      "value": "20",
+      "label": "Tier 3 subscription progress in minutes",
+      "tooltip": "How many minutes to progress in case of a new tier 3 sub.",
+      "group": "On Subscription"
+    },
+    "DonationProgress": {
+      "type": "numberbox",
+      "value": "5",
+      "label": "Progress in minutes for each $ of donation",
+      "tooltip": "How many minutes to progress in case of $1 donation.",
+      "group": "On Donation"
+    },
+    "DonationEndpoint": {
       "type": "textbox",
-      "value": "!ping",
-      "label": "Command",
-      "tooltip": "The command that will be responded to.",
-      "group": "Core"
+      "value": "335F61DE0085BA02B58A",
+      "label": "Donations goal widget token",
+      "tooltip": "The token parameter from your donations goal widget URL (e.g: https://streamlabs.com/widgets/donation-goal?token=335F61DE0085BA02B58A)",
+      "group": "On Donation"
     },
-    "Permission": {
-      "type": "dropdown",
-      "value": "everyone",
-      "items": ["everyone","moderator","subscriber","user_specific","editor"],
-      "label": "Permission",
-      "tooltip": "Who is able to use the command",
-      "group": "Core"
+    "BitProgress": {
+      "type": "numberbox",
+      "value": "1",
+      "label": "Progress in minutes per bit cheered",
+      "tooltip": "How many minutes to progress for every bit cheered?",
+      "group": "On Cheer"
     },
-    "Info": {
-        "type": "textbox",
-        "value": "",
-        "label": "Info",
-        "tooltip": "This field should only be filled when using the user_specific permission.",
-        "group": "Core"
-      },
-    "Cooldown": {
-      "type": "slider",
-      "value": 4,
-      "min": 1,
-      "max": 100,
-      "ticks": 1,
-      "label": "Cooldown (seconds)",
-      "tooltip": "How long the command should go on cooldown for",
-      "group": "Core"
+    "OverlayWidgetHeight": {
+      "type": "numberbox",
+      "value": "48",
+      "label": "Height (px)",
+      "tooltip": "The height of the widget in pixels.",
+      "group": "Widget Style"
     },
-    "Response": {
-        "type": "textbox",
-        "value": "Pong!",
-        "label": "Command",
-        "tooltip": "The message that will be sent to chat when using the command.",
-        "group": "Core"
-      }
+    "OverlayWidgetFontSize": {
+      "type": "numberbox",
+      "value": "16",
+      "label": "Font Size (px)",
+      "tooltip": "Font size in pixels.",
+      "group": "Widget Style"
+    },
+    "OverlayWidgetFontColor": {
+      "type": "colorpicker",
+      "value": "rgba(255,255,255,1.0)",
+      "label": "Text Color",
+      "tooltip": "The color of the text.",
+      "group": "Widget Style"
+    },
+    "OverlayWidgetProgressBarTrackColor": {
+      "type": "colorpicker",
+      "value": "rgba(0,0,0,1.0)",
+      "label": "Progress bar track color",
+      "tooltip": "The color of the progress bar's track.",
+      "group": "Widget Style"
+    },
+    "OverlayWidgetProgressBarColor": {
+      "type": "colorpicker",
+      "value": "rgba(255,0,0,1.0)",
+      "label": "Progress bar color",
+      "tooltip": "The color of the progress bar.",
+      "group": "Widget Style"
+    },
+    "OverlayWidgetBorderRadius": {
+      "type": "numberbox",
+      "value": "5",
+      "label": "Border radius (px)",
+      "tooltip": "How curved the border of the widget should be?",
+      "group": "Widget Style"
+    },
+    "OverlayWidgetCurrentLevelMessage": {
+      "type": "textbox",
+      "value": "Level {0} unlocked!",
+      "label": "'Current level' message",
+      "tooltip": "How curved the border of the widget should be?",
+      "group": "Widget Text"
+    },
+    "OverlayWidgetAllUnlockedMessage": {
+      "type": "textbox",
+      "value": "All levels unlocked!",
+      "label": "'All levels unlocked' message",
+      "tooltip": "",
+      "group": "Widget Text"
+    }
   }
