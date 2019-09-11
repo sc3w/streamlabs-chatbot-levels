@@ -16,7 +16,7 @@ $action = {
     $to = Join-Path $global:pwd "../dist/Levels.zip"
     Write-Host $to
     Write-Host "Distribution package created @" $(Get-Date -Format "HH:mm:ss")
-    Compress-Archive -Path $from -CompressionLevel Fastest -DestinationPath $to -Update
+    Compress-Archive -Path $from -CompressionLevel Fastest -DestinationPath $to -Force
 }    
 
 Unregister-Event $sourceIdentifier -ErrorAction SilentlyContinue
