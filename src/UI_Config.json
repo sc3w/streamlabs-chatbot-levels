@@ -43,7 +43,7 @@
       "tooltip": "How many minutes to progress in case of $1 donation.",
       "group": "On Donation"
     },
-    "DonationEndpoint": {
+    "DonationToken": {
       "type": "textbox",
       "value": "335F61DE0085BA02B58A",
       "label": "Donations goal widget token",
