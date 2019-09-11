@@ -10,28 +10,34 @@ import clr
 clr.AddReference("IronPython.SQLite.dll")
 clr.AddReference("IronPython.Modules.dll")
 
-#   Import your Settings class
 from Settings_Module import MySettings
+
 #---------------------------
-#   [Required] Script Information
+#   Script Information
 #---------------------------
-ScriptName = "Template Script"
-Website = "https://www.streamlabs.com"
-Description = "!test will post a message in chat"
-Creator = "AnkhHeart"
+ScriptName = "Levels"
+Website = "https://sc3w.net"
+Description = "Divide uptime into levels. Unlock levels faster with subs/cheers/donations"
+Creator = "sc3w"
 Version = "1.0.0.0"
 
 #---------------------------
-#   Define Global Variables
+#   Global Variables
 #---------------------------
 global SettingsFile
 SettingsFile = ""
+
 global ScriptSettings
 ScriptSettings = MySettings()
 
 #---------------------------
-#   [Required] Initialize Data (Only called on load)
+#   Script Functions
 #---------------------------
+
+#---------------------------
+#   Lifecycle Functions
+#---------------------------
+
 def Init():
 
     #   Create Settings Directory
@@ -45,9 +51,7 @@ def Init():
     ScriptSettings.Response = "Overwritten pong! ^_^"
     return
 
-#---------------------------
-#   [Required] Execute Data / Process messages
-#---------------------------
+
 def Execute(data):
     if data.IsChatMessage() and data.GetParam(0).lower() == ScriptSettings.Command and Parent.IsOnUserCooldown(ScriptName,ScriptSettings.Command,data.User):
         Parent.SendStreamMessage("Time Remaining " + str(Parent.GetUserCooldownDuration(ScriptName,ScriptSettings.Command,data.User)))
@@ -61,15 +65,11 @@ def Execute(data):
     
     return
 
-#---------------------------
-#   [Required] Tick method (Gets called during every iteration even when there is no incoming data)
-#---------------------------
+
 def Tick():
     return
 
-#---------------------------
-#   [Optional] Parse method (Allows you to create your own custom $parameters) 
-#---------------------------
+
 def Parse(parseString, userid, username, targetid, targetname, message):
     
     if "$myparameter" in parseString:
@@ -77,23 +77,17 @@ def Parse(parseString, userid, username, targetid, targetname, message):
     
     return parseString
 
-#---------------------------
-#   [Optional] Reload Settings (Called when a user clicks the Save Settings button in the Chatbot UI)
-#---------------------------
+
 def ReloadSettings(jsonData):
     # Execute json reloading here
     ScriptSettings.__dict__ = json.loads(jsonData)
     ScriptSettings.Save(SettingsFile)
     return
 
-#---------------------------
-#   [Optional] Unload (Called when a user reloads their scripts or closes the bot / cleanup stuff)
-#---------------------------
+
 def Unload():
     return
+    
 
-#---------------------------
-#   [Optional] ScriptToggled (Notifies you when a user disables your script or enables it)
-#---------------------------
 def ScriptToggled(state):
     return
