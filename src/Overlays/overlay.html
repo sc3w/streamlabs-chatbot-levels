@@ -23,6 +23,10 @@
       }
     });
 
+    var interval = null;
+    var timer = 0;
+    var timerMax = 0;
+
     function initWidget(eventData) {
       var $track = $('#track');
       var $progress = $('#progress');
@@ -38,9 +42,10 @@
       });
 
       $progress.css({
-        width: '33%',
+        width: eventData.percent + '%',
         height: eventData.height + 'px',
         backgroundColor: eventData.progressBarColor,
+        transition: "width 100ms linear"
       });
 
       $text.css({
@@ -55,6 +60,32 @@
       });
 
       $text.text(eventData.text);
+
+      if(eventData.enabled && interval === null) {
+        interval = setInterval(Tick, 1000);
+      }
+      else if (!eventData.enabled && interval !== null)
+      {
+        clearInterval(interval);
+        interval = null;
+      }
+
+      timerMax = eventData.timerMax
+    }
+
+    function Tick() {      
+      var $progress = $('#progress');
+      var percent = (timer * 100) / timerMax;
+
+      $progress.width(percent + '%');
+
+      console.log(percent, timer, timerMax);
+
+      timer++;
+    }
+
+    function updateWidget(eventData) {
+      console.log(eventData);
     }
 
     function connectWebsocket() {
@@ -90,6 +121,10 @@
         if (socketMessage.event == "LEVELS_INIT") {
           var eventData = JSON.parse(socketMessage.data);
           initWidget(eventData)
+        }
+        else if (socketMessage.event == "LEVELS_UPDATE") {
+          var eventData = JSON.parse(socketMessage.data);
+          updateWidget(eventData)
         }
       };
     };

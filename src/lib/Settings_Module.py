@@ -24,6 +24,8 @@ class MySettings(object):
 			self.OverlayWidgetBorderRadius = 5
 			self.OverlayWidgetCurrentLevelMessage = "Level {0} unlocked!"
 			self.OverlayWidgetAllUnlockedMessage = "All levels unlocked!"
+			self.Enabled = False
+			self.CurrentLevel = 1
 
 	def Reload(self, jsondata):
 		self.__dict__ = json.loads(jsondata, encoding="utf-8")

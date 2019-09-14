@@ -4,6 +4,8 @@
 import os
 import sys
 import json
+import re
+import time
 sys.path.append(os.path.join(os.path.dirname(__file__), "lib")) #point at lib folder for classes / references
 
 import clr
@@ -30,6 +32,22 @@ SettingsFile = ""
 global ScriptSettings
 ScriptSettings = MySettings()
 
+global Timer
+Timer = 0
+
+global TimerTick
+TimerTick = None
+
+global Levels
+Levels = 3
+
+# Compiled regex to verify USERNOTICE and extract tags
+reUserNotice = re.compile(r"(?:^(?:@(?P<irctags>[^\ ]*)\ )?:tmi\.twitch\.tv\ USERNOTICE)")
+
+# Compiled regex to extract bits from IRCv3 Tags
+reBitsUsed = re.compile(r"^@.*?bits=(?P<amount>\d*);?")
+
+
 #---------------------------
 #   Script Functions
 #---------------------------
@@ -43,22 +61,47 @@ def LogSettings():
 
     return
 
+
 def GetOverlayText():
     return ScriptSettings.OverlayWidgetCurrentLevelMessage.format(1)
 
+
+def GetPercent():
+    if ScriptSettings.CurrentLevel == ScriptSettings.Levels:
+        return 100
+    
+    relativeTime = Timer / ScriptSettings.CurrentLevel
+
+    return (relativeTime * ScriptSettings.LevelMaxTime) / 100
+
+
 def SendInitMessage():
     payload = {
-		"height": ScriptSettings.OverlayWidgetHeight,
+        "height": ScriptSettings.OverlayWidgetHeight,
         "fontSize": ScriptSettings.OverlayWidgetFontSize,
         "fontColor": ScriptSettings.OverlayWidgetFontColor,
         "trackColor": ScriptSettings.OverlayWidgetProgressBarTrackColor,
         "progressBarColor": ScriptSettings.OverlayWidgetProgressBarColor,
         "borderRadius": ScriptSettings.OverlayWidgetBorderRadius,
-        "text": GetOverlayText()
-	}
+        "text": GetOverlayText(),
+        "enabled":  ScriptSettings.Enabled,
+        "percent": GetPercent(),
+        "timerMax": ScriptSettings.LevelMaxTime * 60,
+        "levels": ScriptSettings.Levels
+    }
 
     Parent.BroadcastWsEvent("LEVELS_INIT",json.dumps(payload))
 
+def SendUpdateMessage():
+    payload = {
+        "levels": ScriptSettings.Levels,
+        "currentLevel": ScriptSettings.CurrentLevel,
+        "percent": GetPercent(),
+        "text": GetOverlayText(),
+        "enabled":  ScriptSettings.Enabled
+    }
+
+    Parent.BroadcastWsEvent("LEVELS_UPDATE",json.dumps(payload))
 #---------------------------
 #   Lifecycle Functions
 #---------------------------
@@ -75,25 +118,72 @@ def Init():
     ScriptSettings = MySettings(SettingsFile)
 
     SendInitMessage()
+
+    TimerTick = time.time()
+
     return
 
 
 def Execute(data):
-    if data.IsChatMessage() and data.GetParam(0).lower() == ScriptSettings.Command and Parent.IsOnUserCooldown(ScriptName,ScriptSettings.Command,data.User):
-        Parent.SendStreamMessage("Time Remaining " + str(Parent.GetUserCooldownDuration(ScriptName,ScriptSettings.Command,data.User)))
 
-    #   Check if the propper command is used, the command is not on cooldown and the user has permission to use the command
-    if data.IsChatMessage() and data.GetParam(0).lower() == ScriptSettings.Command and not Parent.IsOnUserCooldown(ScriptName,ScriptSettings.Command,data.User) and Parent.HasPermission(data.User,ScriptSettings.Permission,ScriptSettings.Info):
-        Parent.BroadcastWsEvent("EVENT_MINE","{'show':false}")
-        Parent.SendStreamMessage(ScriptSettings.Response)    # Send your message to chat
-        Parent.AddUserCooldown(ScriptName,ScriptSettings.Command,data.User,ScriptSettings.Cooldown)  # Put the command on cooldown
+    # Raw IRC message from Twitch
+    if data.IsRawData() and data.IsFromTwitch():
 
+        # Apply regex on raw data to detect subscription usernotice
+        usernotice = reUserNotice.search(data.RawData)
+        if usernotice:
+
+            # Parse IRCv3 tags in a dictionary
+            tags = dict(re.findall(r"([^=]+)=([^;]*)(?:;|$)", usernotice.group("irctags")))
+
+            # local vars
+            extraMinutes = 0
+
+            # Tier 3000 aka 25$
+            if tags["msg-param-sub-plan"] == "3000":
+                extraMinutes = ScriptSettings.Tier3SubProgress * 60
+            # Tier 2000 aka 10$
+            elif tags["msg-param-sub-plan"] == "2000":
+                extraMinutes = ScriptSettings.Tier2SubProgress * 60
+            # Tier 1000 aka 5$ OR Prime
+            else:
+                extraMinutes = ScriptSettings.Tier1SubProgress * 60
     
+            Timer += extraMinutes
+
+            SendUpdateMessage()
+
     return
 
 
 def Tick():
+    if not ScriptSettings.Enabled:
+        return
+
+    global TimerTick
+
+    if TimerTick is None:
+        TimerTick = time.time()
+
+    if (time.time() - TimerTick >= 1.0):
+        TimerTick = time.time()
+
+        global Timer
+        Timer += 1
+
+        percent = GetPercent()
+
+        if percent >= 100:
+            if ScriptSettings.CurrentLevel < ScriptSettings.Levels:
+                ScriptSettings.CurrentLevel += 1
+            else:
+                ScriptSettings.CurrentLevel = ScriptSettings.Levels
+
+                ScriptSettings.Enabled = False
+                Timer = ScriptSettings.LevelMaxTime
+
     return
+
 
 
 def Parse(parseString, userid, username, targetid, targetname, message):
@@ -113,10 +203,7 @@ def ReloadSettings(jsonData):
 
 
 def Unload():
-    return
-    
-def Load():
-    SendInitMessage()
+    ScriptSettings.Enabled = False
     return
 
 def ScriptToggled(state):
@@ -124,6 +211,7 @@ def ScriptToggled(state):
     if not state:
         Unload()
     else:
+        ScriptSettings.Enabled = True
         Init()
 
     LogSettings()
