@@ -2,11 +2,18 @@
   <head>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
     <script src="../API_Key.js"></script>
+    <script src="../Settings/settings.js"></script>
+
+    <style>
+    .animation{
+      transition: width 1s linear;
+    }
+    </style>
   </head>
   <body>
 
     <div id="track">
-      <div id="progress"></div>
+      <div id="progress" class="animation"></div>
       <div id="text"></div>
     </div>
 
@@ -20,14 +27,53 @@
       // Connect to the Streamlabs Chatbot websocket
       else {
         connectWebsocket();
+        initWidget();
       }
     });
 
+    function loadJSON(callback) {   
+
+var xobj = new XMLHttpRequest();
+    xobj.overrideMimeType("application/json");
+xobj.open('GET', '../Settings/settings.json', true); // Replace 'my_data' with the path to your file
+xobj.onreadystatechange = function () {
+      if (xobj.readyState == 4 && xobj.status == "200") {
+        // Required use of an anonymous callback as .open will NOT return a value but simply returns undefined in asynchronous mode
+        callback(xobj.responseText);
+      }
+};
+xobj.send(null);  
+}
+
+    var config = settings !== undefined ? settings : {
+      "Levels": 3,
+			"LevelMaxTime": 80,
+			"Tier1SubProgress": 5,
+			"Tier2SubProgress": 10,
+			"Tier3SubProgress": 20,
+			"BitProgress": 1,
+			"DonationProgress": 5,
+			"DonationToken": "",
+			"OverlayWidgetHeight": 48,
+			"OverlayWidgetFontSize": 16,
+			"OverlayWidgetFontColor": "rgba(255,255,255,1.0)",
+			"OverlayWidgetProgressBarTrackColor": "rgba(0,0,0,1.0)",
+			"OverlayWidgetProgressBarColor": "rgba(255,0,0,1.0)",
+			"OverlayWidgetBorderRadius": 5,
+			"OverlayWidgetCurrentLevelMessage": "Level {0} unlocked!",
+			"OverlayWidgetAllUnlockedMessage": "All levels unlocked!",
+			"Enabled": true,
+			"CurrentLevel": 1,
+    }
+
     var interval = null;
     var timer = 0;
-    var timerMax = 0;
+    var timerMax = config['LevelMaxTime'] * 60;
+    var currentLevel = 1;
+    var levelMax = config['Levels'];
+    var hash = '';
 
-    function initWidget(eventData) {
+    function initWidget(percent = 0) {
       var $track = $('#track');
       var $progress = $('#progress');
       var $text = $('#text');
@@ -35,17 +81,16 @@
       $track.css({
         width: '100%',
         position: 'relative',
-        height: eventData.height + 'px',
+        height: config['OverlayWidgetHeight'] + 'px',
         overflow: 'hidden',
-        backgroundColor: eventData.trackColor,
-        borderRadius: eventData.borderRadius + 'px',
+        backgroundColor: config['OverlayWidgetProgressBarTrackColor'],
+        borderRadius: config['OverlayWidgetBorderRadius'] + 'px',
       });
 
       $progress.css({
-        width: eventData.percent + '%',
-        height: eventData.height + 'px',
-        backgroundColor: eventData.progressBarColor,
-        transition: "width 100ms linear"
+        width: `${percent}%`,
+        height: config['OverlayWidgetHeight'] + 'px',
+        backgroundColor: config['OverlayWidgetProgressBarColor'],
       });
 
       $text.css({
@@ -54,38 +99,50 @@
         top: 0,
         textAlign: 'center',
         fontFamily: 'Arial, Helvetica, sans-serif',
-        color: eventData.fontColor,
-        fontSize: eventData.fontSize + 'px',
-        lineHeight: eventData.height + 'px',
+        color: config['OverlayWidgetFontColor'],
+        fontSize: config['OverlayWidgetFontSize'] + 'px',
+        lineHeight: config['OverlayWidgetHeight'] + 'px',
       });
 
-      $text.text(eventData.text);
-
-      if(eventData.enabled && interval === null) {
-        interval = setInterval(Tick, 1000);
-      }
-      else if (!eventData.enabled && interval !== null)
-      {
-        clearInterval(interval);
-        interval = null;
-      }
-
-      timerMax = eventData.timerMax
+      $text.text(config['OverlayWidgetCurrentLevelMessage'].replace('{0}', currentLevel));
     }
 
     function Tick() {      
       var $progress = $('#progress');
+      var $text = $('#text');
       var percent = (timer * 100) / timerMax;
 
-      $progress.width(percent + '%');
+      if(percent > 100 && currentLevel < levelMax) {
+        currentLevel++;
+        
+        if(currentLevel == levelMax) {
+          $progress.width('100%');
+          clearInterval(interval);
+          interval = null;
+          $text.text(config['OverlayWidgetAllUnlockedMessage'])
 
-      console.log(percent, timer, timerMax);
+          return;
+        }
 
+        percent = 0;
+        timer = 0;
+        $progress
+          .hide()
+          .width('0%')
+          .show();
+
+        $text.text(config['OverlayWidgetCurrentLevelMessage'].replace('{0}', currentLevel))
+        return;
+      }
+
+      $progress.width(percent + '%');      
       timer++;
+
     }
 
     function updateWidget(eventData) {
-      console.log(eventData);
+      console.log(`Progress ${eventData.addMinutes}`)
+      timer += parseInt(`${eventData.addMinutes}`)
     }
 
     function connectWebsocket() {
@@ -98,9 +155,7 @@
           author: "sc3w",
           website: "https://sc3w.net",
           api_key: API_Key,
-          events: [
-            "LEVELS_INIT"
-          ]
+          events: [ "LEVELS_UPDATE", "LEVELS_REFRESH" ]
         };
         // Send authentication payload to Streamlabs Chatbot
         socket.send(JSON.stringify(auth));
@@ -116,15 +171,24 @@
       socket.onmessage = function (message) {
         // Parse message data to extract event name
         var socketMessage = JSON.parse(message.data);
-        console.log(socketMessage);
-        // SUBATHON_UPDATE
-        if (socketMessage.event == "LEVELS_INIT") {
+        console.log(socketMessage);        
+        if (socketMessage.event == "LEVELS_UPDATE") {
           var eventData = JSON.parse(socketMessage.data);
-          initWidget(eventData)
-        }
-        else if (socketMessage.event == "LEVELS_UPDATE") {
-          var eventData = JSON.parse(socketMessage.data);
-          updateWidget(eventData)
+
+          if(eventData.type === "progress"){
+            updateWidget(eventData)
+          }
+          else if(eventData.type === "reload"){
+            location.reload()
+          }
+          else if(eventData.type === "start"){
+            interval = setInterval(Tick, 1000);
+          }
+          else if(eventData.type === "stop"){
+            clearInterval(interval);
+            interval = null;
+          }
+
         }
       };
     };

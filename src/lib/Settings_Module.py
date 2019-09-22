@@ -1,13 +1,14 @@
 import os
 import codecs
 import json
+import sys
 
 class MySettings(object):
 	def __init__(self, settingsfile=None):
 		try:
 			with codecs.open(settingsfile, encoding="utf-8-sig", mode="r") as f:
 				self.__dict__ = json.load(f, encoding="utf-8")
-		except:
+		except IOError as ex:
 			self.Levels = 3
 			self.LevelMaxTime = 80
 			self.Tier1SubProgress = 5
@@ -24,8 +25,15 @@ class MySettings(object):
 			self.OverlayWidgetBorderRadius = 5
 			self.OverlayWidgetCurrentLevelMessage = "Level {0} unlocked!"
 			self.OverlayWidgetAllUnlockedMessage = "All levels unlocked!"
-			self.Enabled = False
-			self.CurrentLevel = 1
+		
+		self.Enabled = True
+		self.CurrentLevel = 1
+		self.Initialized = False
+		self.IsLive = False
+		
+
+	def GetDonationsUrl(self):
+		return "https://streamlabs.com/api/v5/donation-goal/data/?token=" + self.DonationToken
 
 	def Reload(self, jsondata):
 		self.__dict__ = json.loads(jsondata, encoding="utf-8")

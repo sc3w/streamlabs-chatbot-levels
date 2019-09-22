@@ -112,5 +112,13 @@
       "label": "'All levels unlocked' message",
       "tooltip": "",
       "group": "Widget Text"
+    },
+    "RefreshOverlay": {
+      "type": "button",
+      "label": "Refresh Overlay",
+      "tooltip": "Refreshes the overlay.",
+      "function": "RefreshOverlay",
+      "wsevent": "",
+      "group": ""
     }
   }
