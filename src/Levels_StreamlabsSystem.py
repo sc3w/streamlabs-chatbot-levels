@@ -6,7 +6,12 @@ import sys
 import json
 import re
 import time
+import math
+
 sys.path.append(os.path.join(os.path.dirname(__file__), "lib")) #point at lib folder for classes / references
+
+import codecs
+import ctypes
 
 import clr
 clr.AddReference("IronPython.SQLite.dll")
@@ -35,14 +40,20 @@ ScriptSettings = None
 global Timer
 Timer = 0
 
+global Active
+Active = False
+
 global TimerTick
 TimerTick = None
 
 global Levels
 Levels = 3
 
-global DonationsAmount
-DonationsAmount = None
+global CurrentLevel
+CurrentLevel = 0
+
+global CurrentLevelFileName
+CurrentLevelFileName = "Overlays\currentlevel.txt"
 
 # Compiled regex to verify USERNOTICE and extract tags
 reUserNotice = re.compile(r"(?:^(?:@(?P<irctags>[^\ ]*)\ )?:tmi\.twitch\.tv\ USERNOTICE)")
@@ -70,7 +81,8 @@ def SendUpdateMessage(extraMinutes):
         "type": "progress",
         "addMinutes": extraMinutes
     }
-
+    global Timer
+    Timer += extraMinutes
     Parent.BroadcastWsEvent("LEVELS_UPDATE",json.dumps(payload))
 
 
@@ -80,6 +92,8 @@ def SendStartTimer():
     }
 
     Parent.BroadcastWsEvent("LEVELS_UPDATE",json.dumps(payload))
+    global Active
+    Active = True
     return
 
 
@@ -89,48 +103,29 @@ def SendStopTimer():
     }
 
     Parent.BroadcastWsEvent("LEVELS_UPDATE",json.dumps(payload))
-    return
-
-
-def GetDonationsAmount():
-    url = ScriptSettings.GetDonationsUrl()
-
-    httpResult = Parent.GetRequest(url, {})
-    jsonResult = json.loads(httpResult)
-    result = json.loads(jsonResult['response'])
-
-    return int(result['data']['amount']['current'])
-
-
-def CheckForDonations():
-    
-    newDonationsAmount = GetDonationsAmount()
-
-    global DonationsAmount
-    global ScriptSettings
-
-    if DonationsAmount is None:
-        DonationsAmount = newDonationsAmount
-    elif newDonationsAmount != DonationsAmount:
-
-        # there is no new donation or
-        # the donation widget has been reseted
-        if newDonationsAmount <= DonationsAmount:
-            DonationsAmount = newDonationsAmount
-            return
-
-        amount = newDonationsAmount - DonationsAmount
-
-        DonationsAmount = newDonationsAmount
-
-        SendUpdateMessage(ScriptSettings.DonationProgress * 60 * amount)
-    
+    global Active
+    Active = False
     return
 
 def RefreshOverlay():
     payload = {
         "type": "reload"
     }
+    global Timer
+    global CurrentLevel
+    global CurrentLevelFileName
+
+    Timer = 0
+    CurrentLevel = 0
+
+    path = os.path.dirname(__file__)
+
+    with codecs.open(os.path.join(path, CurrentLevelFileName), "r") as f:
+        data = f.read()
+
+    #with open(os.path.join(path, CurrentLevelFileName), "w") as file:
+    with codecs.open(os.path.join(path, CurrentLevelFileName), encoding='utf-8-sig', mode='w+') as file:
+        file.write("0")
 
     Parent.BroadcastWsEvent("LEVELS_UPDATE", json.dumps(payload))
 
@@ -143,11 +138,16 @@ def RefreshOverlay():
 def Init():
 
     global ScriptSettings
+    path = os.path.dirname(__file__)
 
     # Create Settings Directory
     directory = os.path.join(os.path.dirname(__file__), "Settings")
     if not os.path.exists(directory):
         os.makedirs(directory)
+
+    if not os.path.exists(os.path.join(path, CurrentLevelFileName)):
+        with open(os.path.join(path, CurrentLevelFileName), "w+") as f:
+            f.write("0")
 
     # Load settings
     SettingsFile = os.path.join(os.path.dirname(__file__), "Settings\settings.json")
@@ -223,8 +223,16 @@ def Execute(data):
 
             if data.GetParam(1).lower() == "bits":
                 bits = int(data.GetParam(2))
-                SendUpdateMessage(ScriptSettings.BitProgress * 60 * bits)
-
+                SendUpdateMessage(ScriptSettings.BitProgress * bits)
+        elif (data.IsChatMessage() and data.GetParam(0).lower() == "!sron"
+                and Parent.HasPermission(data.User, "caster", "")):
+            SendStartTimer()
+        elif (data.IsChatMessage() and data.GetParam(0).lower() == "!sroff"
+                and Parent.HasPermission(data.User, "caster", "")):
+            SendStopTimer()
+        elif (data.IsChatMessage() and data.GetParam(0).lower() == "!srreset"
+                and Parent.HasPermission(data.User, "caster", "")):
+            RefreshOverlay()
 
     return
 
@@ -244,38 +252,37 @@ def Tick():
     if TimerTick is None:
         TimerTick = time.time()
 
-    if (time.time() - TimerTick >= 1.0):
+    if (time.time() - TimerTick >= 1.0 and Active):
         TimerTick = time.time()
 
         global Timer
         Timer += 1
 
-        percent = GetPercent()
+        level = int(math.floor(Timer / (ScriptSettings.LevelMaxTime * 60)))
 
-        if percent >= 100:
-            if ScriptSettings.CurrentLevel < ScriptSettings.Levels:
-                ScriptSettings.CurrentLevel += 1
+        global CurrentLevel
+
+        if level >= ScriptSettings.Levels:
+            level = ScriptSettings.Levels-1
+
+        if CurrentLevel != level:
+            CurrentLevel = level
+            
+            
+            if (level+1) == ScriptSettings.Levels:
+                Parent.SendTwitchMessage(ScriptSettings.OverlayWidgetAllUnlockedMessage)
             else:
-                ScriptSettings.CurrentLevel = ScriptSettings.Levels
-
-                ScriptSettings.Enabled = False
-                Timer = ScriptSettings.LevelMaxTime
-
-        if Timer % 4 == 0:
-            CheckForDonations()
-
-            isLive = Parent.IsLive()
-
-            # start timer if the stream went live
-            # stop the timer if the tream went down
-            if isLive != ScriptSettings.IsLive:
-                if isLive:
-                    SendStartTimer()
-                else:
-                    SendStopTimer()
+                Parent.SendTwitchMessage(ScriptSettings.OverlayWidgetCurrentLevelMessage.format(level+1))
                 
-                ScriptSettings.IsLive = isLive
+            path = os.path.dirname(__file__)
 
+            with codecs.open(os.path.join(path, CurrentLevelFileName), "r") as f:
+                data = f.read()
+
+            #with open(os.path.join(path, CurrentLevelFileName), "w") as file:
+            with codecs.open(os.path.join(path, CurrentLevelFileName), encoding='utf-8-sig', mode='w+') as file:
+                file.write(str(level))
+        
     return
 
 

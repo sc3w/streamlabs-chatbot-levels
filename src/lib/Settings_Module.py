@@ -16,7 +16,6 @@ class MySettings(object):
 			self.Tier3SubProgress = 20
 			self.BitProgress = 1
 			self.DonationProgress = 5
-			self.DonationToken = ""
 			self.OverlayWidgetHeight = 48
 			self.OverlayWidgetFontSize = 16
 			self.OverlayWidgetFontColor = "rgba(255,255,255,1.0)"

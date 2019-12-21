@@ -43,17 +43,10 @@
       "tooltip": "How many minutes to progress in case of $1 donation.",
       "group": "On Donation"
     },
-    "DonationToken": {
-      "type": "textbox",
-      "value": "335F61DE0085BA02B58A",
-      "label": "Donations goal widget token",
-      "tooltip": "The token parameter from your donations goal widget URL (e.g: https://streamlabs.com/widgets/donation-goal?token=335F61DE0085BA02B58A)",
-      "group": "On Donation"
-    },
     "BitProgress": {
       "type": "numberbox",
       "value": "1",
-      "label": "Progress in minutes per bit cheered",
+      "label": "Progress in seconds per bit cheered",
       "tooltip": "How many minutes to progress for every bit cheered?",
       "group": "On Cheer"
     },
