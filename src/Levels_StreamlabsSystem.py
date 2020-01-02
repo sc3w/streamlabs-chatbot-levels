@@ -38,7 +38,7 @@ global ScriptSettings
 ScriptSettings = None
 
 global Timer
-Timer = 0
+Timer = 1
 
 global Active
 Active = False
@@ -203,7 +203,7 @@ def Execute(data):
         if BitsSearch and BitsSearch.group("amount"):
             # local vars
             totalBits = BitsSearch.group("amount")
-            SendUpdateMessage(ScriptSettings.BitProgress * 60 * int(totalBits))
+            SendUpdateMessage(float(ScriptSettings.BitProgress) * 60 * float(totalBits))
         
         elif (data.IsChatMessage() and data.GetParam(0).lower() == "!levels" 
                 and Parent.HasPermission(data.User, "moderator", "")):
@@ -217,13 +217,13 @@ def Execute(data):
             if data.GetParam(1).lower() == "tier3":
                 SendUpdateMessage(ScriptSettings.Tier3SubProgress * 60)
 
-            if data.GetParam(1).lower() == "donation":
-                donation = int(data.GetParam(2))
+            if data.GetParam(1).lower() == "dono":
+                donation = float(data.GetParam(2))
                 SendUpdateMessage(ScriptSettings.DonationProgress * 60 * donation)
 
             if data.GetParam(1).lower() == "bits":
-                bits = int(data.GetParam(2))
-                SendUpdateMessage(ScriptSettings.BitProgress * bits)
+                bits = float(data.GetParam(2))
+                SendUpdateMessage(float(ScriptSettings.BitProgress) * bits)
         elif (data.IsChatMessage() and data.GetParam(0).lower() == "!sron"
                 and Parent.HasPermission(data.User, "caster", "")):
             SendStartTimer()
@@ -284,7 +284,6 @@ def Tick():
                 file.write(str(level))
         
     return
-
 
 def ReloadSettings(jsonData):
     global ScriptSettings

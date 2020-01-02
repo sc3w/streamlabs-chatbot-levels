@@ -44,9 +44,9 @@
       "group": "On Donation"
     },
     "BitProgress": {
-      "type": "numberbox",
+      "type": "textbox",
       "value": "1",
-      "label": "Progress in seconds per bit cheered",
+      "label": "Progress in seconds per bit cheered (float numbers only!)",
       "tooltip": "How many minutes to progress for every bit cheered?",
       "group": "On Cheer"
     },
@@ -91,6 +91,13 @@
       "label": "Border radius (px)",
       "tooltip": "How curved the border of the widget should be?",
       "group": "Widget Style"
+    },
+    "OverlayWidgetFirstLevelMessage": {
+      "type": "textbox",
+      "value": "This is level 1!",
+      "label": "First level's message",
+      "tooltip": "",
+      "group": "Widget Text"
     },
     "OverlayWidgetCurrentLevelMessage": {
       "type": "textbox",

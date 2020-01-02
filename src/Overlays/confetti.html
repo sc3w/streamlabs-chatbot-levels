@@ -1,0 +1,280 @@
+<html>
+
+<head>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+  <script src="../API_Key.js"></script>
+  <script src="../Settings/settings.js"></script>
+
+  <script>
+    var maxParticleCount = 150; //set max confetti count
+    var particleSpeed = 2; //set the particle animation speed
+    var startConfetti; //call to start confetti animation
+    var stopConfetti; //call to stop adding confetti
+    var toggleConfetti; //call to start or stop the confetti animation depending on whether it's already running
+    var removeConfetti; //call to stop the confetti animation and remove all confetti immediately
+
+    (function () {
+      startConfetti = startConfettiInner;
+      stopConfetti = stopConfettiInner;
+      toggleConfetti = toggleConfettiInner;
+      removeConfetti = removeConfettiInner;
+      var colors = ["DodgerBlue", "OliveDrab", "Gold", "Pink", "SlateBlue", "LightBlue", "Violet", "PaleGreen", "SteelBlue", "SandyBrown", "Chocolate", "Crimson"]
+      var streamingConfetti = false;
+      var animationTimer = null;
+      var particles = [];
+      var waveAngle = 0;
+
+      function resetParticle(particle, width, height) {
+        particle.color = colors[(Math.random() * colors.length) | 0];
+        particle.x = Math.random() * width;
+        particle.y = Math.random() * height - height;
+        particle.diameter = Math.random() * 10 + 5;
+        particle.tilt = Math.random() * 10 - 10;
+        particle.tiltAngleIncrement = Math.random() * 0.07 + 0.05;
+        particle.tiltAngle = 0;
+        return particle;
+      }
+
+      function startConfettiInner() {
+        var width = window.innerWidth;
+        var height = window.innerHeight;
+        window.requestAnimFrame = (function () {
+          return window.requestAnimationFrame ||
+            window.webkitRequestAnimationFrame ||
+            window.mozRequestAnimationFrame ||
+            window.oRequestAnimationFrame ||
+            window.msRequestAnimationFrame ||
+            function (callback) {
+              return window.setTimeout(callback, 16.6666667);
+            };
+        })();
+        var canvas = document.getElementById("confetti-canvas");
+        if (canvas === null) {
+          canvas = document.createElement("canvas");
+          canvas.setAttribute("id", "confetti-canvas");
+          canvas.setAttribute("style", "display:block;z-index:999999;pointer-events:none");
+          document.body.appendChild(canvas);
+          canvas.width = width;
+          canvas.height = height;
+          window.addEventListener("resize", function () {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+          }, true);
+        }
+        var context = canvas.getContext("2d");
+        while (particles.length < maxParticleCount)
+          particles.push(resetParticle({}, width, height));
+        streamingConfetti = true;
+        if (animationTimer === null) {
+          (function runAnimation() {
+            context.clearRect(0, 0, window.innerWidth, window.innerHeight);
+            if (particles.length === 0)
+              animationTimer = null;
+            else {
+              updateParticles();
+              drawParticles(context);
+              animationTimer = requestAnimFrame(runAnimation);
+            }
+          })();
+        }
+      }
+
+      function stopConfettiInner() {
+        streamingConfetti = false;
+      }
+
+      function removeConfettiInner() {
+        stopConfetti();
+        particles = [];
+      }
+
+      function toggleConfettiInner() {
+        if (streamingConfetti)
+          stopConfettiInner();
+        else
+          startConfettiInner();
+      }
+
+      function drawParticles(context) {
+        var particle;
+        var x;
+        for (var i = 0; i < particles.length; i++) {
+          particle = particles[i];
+          context.beginPath();
+          context.lineWidth = particle.diameter;
+          context.strokeStyle = particle.color;
+          x = particle.x + particle.tilt;
+          context.moveTo(x + particle.diameter / 2, particle.y);
+          context.lineTo(x, particle.y + particle.tilt + particle.diameter / 2);
+          context.stroke();
+        }
+      }
+
+      function updateParticles() {
+        var width = window.innerWidth;
+        var height = window.innerHeight;
+        var particle;
+        waveAngle += 0.01;
+        for (var i = 0; i < particles.length; i++) {
+          particle = particles[i];
+          if (!streamingConfetti && particle.y < -15)
+            particle.y = height + 100;
+          else {
+            particle.tiltAngle += particle.tiltAngleIncrement;
+            particle.x += Math.sin(waveAngle);
+            particle.y += (Math.cos(waveAngle) + particle.diameter + particleSpeed) * 0.5;
+            particle.tilt = Math.sin(particle.tiltAngle) * 15;
+          }
+          if (particle.x > width + 20 || particle.x < -20 || particle.y > height) {
+            if (streamingConfetti && particles.length <= maxParticleCount)
+              resetParticle(particle, width, height);
+            else {
+              particles.splice(i, 1);
+              i--;
+            }
+          }
+        }
+      }
+    })();
+  </script>
+</head>
+
+<body>
+
+
+  <script>
+    $(document).ready(function () {
+      // Show an error message if the API key file is not loaded
+      if (typeof API_Key === "undefined") {
+        $("body").html("No API Key found or load!<br>Rightclick on the Scoreboard script in AnkhBot and select \"Insert API Key\"");
+        $("body").css({ "font-size": "20px", "color": "#ff8080", "text-align": "center" });
+      }
+      // Connect to the Streamlabs Chatbot websocket
+      else {
+        connectWebsocket();
+      }
+    });
+
+    function loadJSON(callback) {
+
+      var xobj = new XMLHttpRequest();
+      xobj.overrideMimeType("application/json");
+      xobj.open('GET', '../Settings/settings.json', true); // Replace 'my_data' with the path to your file
+      xobj.onreadystatechange = function () {
+        if (xobj.readyState == 4 && xobj.status == "200") {
+          // Required use of an anonymous callback as .open will NOT return a value but simply returns undefined in asynchronous mode
+          callback(xobj.responseText);
+        }
+      };
+      xobj.send(null);
+    }
+
+    var config = settings !== undefined ? settings : {
+      "Levels": 3,
+      "LevelMaxTime": 80,
+      "Tier1SubProgress": 5,
+      "Tier2SubProgress": 10,
+      "Tier3SubProgress": 20,
+      "BitProgress": 1,
+      "DonationProgress": 5,
+      "DonationToken": "",
+      "OverlayWidgetHeight": 48,
+      "OverlayWidgetFontSize": 16,
+      "OverlayWidgetFontColor": "rgba(255,255,255,1.0)",
+      "OverlayWidgetProgressBarTrackColor": "rgba(0,0,0,1.0)",
+      "OverlayWidgetProgressBarColor": "rgba(255,0,0,1.0)",
+      "OverlayWidgetBorderRadius": 5,
+      "OverlayWidgetCurrentLevelMessage": "Level {0} unlocked!",
+      "OverlayWidgetAllUnlockedMessage": "All levels unlocked!",
+      "OverlayWidgetFirstLevelMessage": "This is the first level!",
+      "Enabled": true,
+      "CurrentLevel": 1,
+    }
+
+    var interval = null;
+    var timer = 0;
+    var timerMax = config['LevelMaxTime'] * 60;
+    var currentLevel = 1;
+    var levelMax = config['Levels'];
+    var hash = '';
+
+    function Tick() {
+      var $progress = $('#progress');
+      var $text = $('#text');
+      var percent = (timer * 100) / timerMax;
+
+      while (percent > 100 && currentLevel < levelMax) {
+        percent -= 100;
+        timer -= timerMax;
+        currentLevel++;
+      }
+
+      if (currentLevel >= levelMax) {
+        clearInterval(interval);
+        interval = null;
+        startConfetti();
+        setTimeout(stopConfetti, 8000);
+        return;
+      }
+
+      timer++;
+    }
+
+    function updateWidget(eventData) {
+      console.log(`Progress ${eventData.addMinutes}`)
+      timer += parseInt(`${eventData.addMinutes}`)
+    }
+
+    function connectWebsocket() {
+      // Create the websocket connection
+      var socket = new WebSocket("ws://127.0.0.1:3337/streamlabs");
+      // WS OnOpen event : authenticate
+      socket.onopen = function () {
+        // Create authentication payload and request required events
+        var auth = {
+          author: "sc3w",
+          website: "https://sc3w.net",
+          api_key: API_Key,
+          events: ["LEVELS_UPDATE", "LEVELS_REFRESH"]
+        };
+        // Send authentication payload to Streamlabs Chatbot
+        socket.send(JSON.stringify(auth));
+      };
+
+      // Ws OnClose : try reconnect
+      socket.onclose = function () {
+        socket = null;
+        setTimeout(connectWebsocket, 5000);
+      };
+
+      // WS OnMessage event : handle events
+      socket.onmessage = function (message) {
+        // Parse message data to extract event name
+        var socketMessage = JSON.parse(message.data);
+        console.log(socketMessage);
+        if (socketMessage.event == "LEVELS_UPDATE") {
+          var eventData = JSON.parse(socketMessage.data);
+
+          if (eventData.type === "progress") {
+            updateWidget(eventData)
+          }
+          else if (eventData.type === "reload") {
+            location.reload()
+          }
+          else if (eventData.type === "start") {
+            interval = setInterval(Tick, 1000);
+          }
+          else if (eventData.type === "stop") {
+            clearInterval(interval);
+            interval = null;
+          }
+
+        }
+      };
+    };
+
+  </script>
+
+</body>
+
+</html>

@@ -62,6 +62,7 @@ xobj.send(null);
 			"OverlayWidgetBorderRadius": 5,
 			"OverlayWidgetCurrentLevelMessage": "Level {0} unlocked!",
 			"OverlayWidgetAllUnlockedMessage": "All levels unlocked!",
+      "OverlayWidgetFirstLevelMessage": "This is the first level!",
 			"Enabled": true,
 			"CurrentLevel": 1,
     }
@@ -104,7 +105,13 @@ xobj.send(null);
         lineHeight: config['OverlayWidgetHeight'] + 'px',
       });
 
-      $text.text(config['OverlayWidgetCurrentLevelMessage'].replace('{0}', currentLevel));
+      if(currentLevel === 1) {
+        $text.text(config['OverlayWidgetFirstLevelMessage']);
+      }
+      else
+      {
+        $text.text(config['OverlayWidgetCurrentLevelMessage'].replace('{0}', currentLevel));
+      }
     }
 
     function Tick() {      
@@ -112,32 +119,37 @@ xobj.send(null);
       var $text = $('#text');
       var percent = (timer * 100) / timerMax;
 
-      if(percent > 100 && currentLevel < levelMax) {
-        currentLevel++;
-        
-        if(currentLevel == levelMax) {
-          $progress.width('100%');
-          clearInterval(interval);
-          interval = null;
-          $text.text(config['OverlayWidgetAllUnlockedMessage'])
+      var updateWidgetText = false;
+      while(percent > 100 && currentLevel < levelMax)
+      {
+          percent -= 100;
+          timer -= timerMax;
+          currentLevel++;
+          updateWidgetText = true;
+      }
 
-          return;
-        }
 
-        percent = 0;
-        timer = 0;
+      if(updateWidgetText && currentLevel < levelMax) {
+        //percent = 0;
+        //timer = 0;
         $progress
           .hide()
-          .width('0%')
+          .width(`${percent}%`)
           .show();
 
         $text.text(config['OverlayWidgetCurrentLevelMessage'].replace('{0}', currentLevel))
-        return;
+        
+      }
+      else if(currentLevel >= levelMax){
+        $progress.width('100%');
+          clearInterval(interval);
+          interval = null;
+          $text.text(config['OverlayWidgetAllUnlockedMessage'])
+          return;
       }
 
       $progress.width(percent + '%');      
       timer++;
-
     }
 
     function updateWidget(eventData) {

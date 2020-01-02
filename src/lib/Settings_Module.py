@@ -14,7 +14,7 @@ class MySettings(object):
 			self.Tier1SubProgress = 5
 			self.Tier2SubProgress = 10
 			self.Tier3SubProgress = 20
-			self.BitProgress = 1
+			self.BitProgress = "1"
 			self.DonationProgress = 5
 			self.OverlayWidgetHeight = 48
 			self.OverlayWidgetFontSize = 16
@@ -22,6 +22,7 @@ class MySettings(object):
 			self.OverlayWidgetProgressBarTrackColor = "rgba(0,0,0,1.0)"
 			self.OverlayWidgetProgressBarColor = "rgba(255,0,0,1.0)"
 			self.OverlayWidgetBorderRadius = 5
+			self.OverlayWidgetFirstLevelMessage = "This is the first level!"
 			self.OverlayWidgetCurrentLevelMessage = "Level {0} unlocked!"
 			self.OverlayWidgetAllUnlockedMessage = "All levels unlocked!"
 		
