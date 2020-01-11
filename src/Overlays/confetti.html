@@ -138,7 +138,6 @@
     })();
   </script>
 </head>
-
 <body>
 
 
@@ -154,76 +153,6 @@
         connectWebsocket();
       }
     });
-
-    function loadJSON(callback) {
-
-      var xobj = new XMLHttpRequest();
-      xobj.overrideMimeType("application/json");
-      xobj.open('GET', '../Settings/settings.json', true); // Replace 'my_data' with the path to your file
-      xobj.onreadystatechange = function () {
-        if (xobj.readyState == 4 && xobj.status == "200") {
-          // Required use of an anonymous callback as .open will NOT return a value but simply returns undefined in asynchronous mode
-          callback(xobj.responseText);
-        }
-      };
-      xobj.send(null);
-    }
-
-    var config = settings !== undefined ? settings : {
-      "Levels": 3,
-      "LevelMaxTime": 80,
-      "Tier1SubProgress": 5,
-      "Tier2SubProgress": 10,
-      "Tier3SubProgress": 20,
-      "BitProgress": 1,
-      "DonationProgress": 5,
-      "DonationToken": "",
-      "OverlayWidgetHeight": 48,
-      "OverlayWidgetFontSize": 16,
-      "OverlayWidgetFontColor": "rgba(255,255,255,1.0)",
-      "OverlayWidgetProgressBarTrackColor": "rgba(0,0,0,1.0)",
-      "OverlayWidgetProgressBarColor": "rgba(255,0,0,1.0)",
-      "OverlayWidgetBorderRadius": 5,
-      "OverlayWidgetCurrentLevelMessage": "Level {0} unlocked!",
-      "OverlayWidgetAllUnlockedMessage": "All levels unlocked!",
-      "OverlayWidgetFirstLevelMessage": "This is the first level!",
-      "Enabled": true,
-      "CurrentLevel": 1,
-    }
-
-    var interval = null;
-    var timer = 0;
-    var timerMax = config['LevelMaxTime'] * 60;
-    var currentLevel = 1;
-    var levelMax = config['Levels'];
-    var hash = '';
-
-    function Tick() {
-      var $progress = $('#progress');
-      var $text = $('#text');
-      var percent = (timer * 100) / timerMax;
-
-      while (percent > 100 && currentLevel < levelMax) {
-        percent -= 100;
-        timer -= timerMax;
-        currentLevel++;
-      }
-
-      if (currentLevel >= levelMax) {
-        clearInterval(interval);
-        interval = null;
-        startConfetti();
-        setTimeout(stopConfetti, 8000);
-        return;
-      }
-
-      timer++;
-    }
-
-    function updateWidget(eventData) {
-      console.log(`Progress ${eventData.addMinutes}`)
-      timer += parseInt(`${eventData.addMinutes}`)
-    }
 
     function connectWebsocket() {
       // Create the websocket connection
@@ -254,21 +183,10 @@
         console.log(socketMessage);
         if (socketMessage.event == "LEVELS_UPDATE") {
           var eventData = JSON.parse(socketMessage.data);
-
-          if (eventData.type === "progress") {
-            updateWidget(eventData)
+          if (eventData.type === "start_confetti") {
+            startConfetti();
+            setTimeout(stopConfetti, 14000);
           }
-          else if (eventData.type === "reload") {
-            location.reload()
-          }
-          else if (eventData.type === "start") {
-            interval = setInterval(Tick, 1000);
-          }
-          else if (eventData.type === "stop") {
-            clearInterval(interval);
-            interval = null;
-          }
-
         }
       };
     };

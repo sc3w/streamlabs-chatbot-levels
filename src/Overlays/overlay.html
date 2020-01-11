@@ -1,211 +1,111 @@
-<html>
-  <head>
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
-    <script src="../API_Key.js"></script>
-    <script src="../Settings/settings.js"></script>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Progress Bar</title>
+  <script src="../overlay.js"></script>
+  <script src="../Settings/settings.js"></script>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+    }
 
-    <style>
-    .animation{
+    .animation {
       transition: width 1s linear;
     }
-    </style>
-  </head>
-  <body>
+    
+    #track {
+      width: 100%;
+      position: relative;
+      overflow: hidden;
+    }
 
-    <div id="track">
-      <div id="progress" class="animation"></div>
-      <div id="text"></div>
-    </div>
+    #text {
+      width: 100%;
+      position: absolute;
+      top: 0;
+      text-align: center;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+  </style>
+</head>
 
-    <script>
-    $(document).ready(function() {	
-      // Show an error message if the API key file is not loaded
-      if (typeof API_Key === "undefined") {
-        $("body").html("No API Key found or load!<br>Rightclick on the Scoreboard script in AnkhBot and select \"Insert API Key\"");
-        $("body").css({"font-size": "20px", "color": "#ff8080", "text-align": "center"});
-      }
-      // Connect to the Streamlabs Chatbot websocket
-      else {
-        connectWebsocket();
-        initWidget();
-      }
-    });
+<body>
+  <div id="track">
+    <div id="progress" class="animation"></div>
+    <div id="text"></div>
+  </div>
 
-    function loadJSON(callback) {   
-
-var xobj = new XMLHttpRequest();
-    xobj.overrideMimeType("application/json");
-xobj.open('GET', '../Settings/settings.json', true); // Replace 'my_data' with the path to your file
-xobj.onreadystatechange = function () {
-      if (xobj.readyState == 4 && xobj.status == "200") {
-        // Required use of an anonymous callback as .open will NOT return a value but simply returns undefined in asynchronous mode
-        callback(xobj.responseText);
-      }
-};
-xobj.send(null);  
-}
-
+  <script>
+    
     var config = settings !== undefined ? settings : {
       "Levels": 3,
-			"LevelMaxTime": 80,
-			"Tier1SubProgress": 5,
-			"Tier2SubProgress": 10,
-			"Tier3SubProgress": 20,
-			"BitProgress": 1,
-			"DonationProgress": 5,
-			"DonationToken": "",
-			"OverlayWidgetHeight": 48,
-			"OverlayWidgetFontSize": 16,
-			"OverlayWidgetFontColor": "rgba(255,255,255,1.0)",
-			"OverlayWidgetProgressBarTrackColor": "rgba(0,0,0,1.0)",
-			"OverlayWidgetProgressBarColor": "rgba(255,0,0,1.0)",
-			"OverlayWidgetBorderRadius": 5,
-			"OverlayWidgetCurrentLevelMessage": "Level {0} unlocked!",
-			"OverlayWidgetAllUnlockedMessage": "All levels unlocked!",
+      "LevelMaxTime": 80,
+      "Tier1SubProgress": 5,
+      "Tier2SubProgress": 10,
+      "Tier3SubProgress": 20,
+      "BitProgress": 1,
+      "DonationProgress": 5,
+      "DonationToken": "",
+      "OverlayWidgetHeight": 48,
+      "OverlayWidgetFontSize": 16,
+      "OverlayWidgetFontColor": "rgba(255,255,255,1.0)",
+      "OverlayWidgetProgressBarTrackColor": "rgba(0,0,0,1.0)",
+      "OverlayWidgetProgressBarColor": "rgba(255,0,0,1.0)",
+      "OverlayWidgetBorderRadius": 5,
+      "OverlayWidgetCurrentLevelMessage": "Level {0} unlocked!",
+      "OverlayWidgetAllUnlockedMessage": "All levels unlocked!",
       "OverlayWidgetFirstLevelMessage": "This is the first level!",
-			"Enabled": true,
-			"CurrentLevel": 1,
-    }
+      "Enabled": true,
+      "CurrentLevel": 1,
+    };
 
-    var interval = null;
-    var timer = 0;
+    var $track = document.getElementById('track');
+    var $progress = document.getElementById('progress');
+    var $text = document.getElementById('text');
+
+    $progress.style.height = config['OverlayWidgetHeight'] + 'px';
+    $progress.style.backgroundColor = config['OverlayWidgetProgressBarColor'];
+
+    $track.style.height = config['OverlayWidgetHeight'] + 'px';
+    $track.style.backgroundColor = config['OverlayWidgetProgressBarTrackColor'];
+    $track.style.borderRadius = config['OverlayWidgetBorderRadius'] + 'px';
+
+    $text.style.color = config['OverlayWidgetFontColor'];
+    $text.style.fontSize = config['OverlayWidgetFontSize'] + 'px';
+    $text.style.lineHeight = config['OverlayWidgetHeight'] + 'px';
+
     var timerMax = config['LevelMaxTime'] * 60;
     var currentLevel = 1;
-    var levelMax = config['Levels'];
-    var hash = '';
 
-    function initWidget(percent = 0) {
-      var $track = $('#track');
-      var $progress = $('#progress');
-      var $text = $('#text');
-
-      $track.css({
-        width: '100%',
-        position: 'relative',
-        height: config['OverlayWidgetHeight'] + 'px',
-        overflow: 'hidden',
-        backgroundColor: config['OverlayWidgetProgressBarTrackColor'],
-        borderRadius: config['OverlayWidgetBorderRadius'] + 'px',
-      });
-
-      $progress.css({
-        width: `${percent}%`,
-        height: config['OverlayWidgetHeight'] + 'px',
-        backgroundColor: config['OverlayWidgetProgressBarColor'],
-      });
-
-      $text.css({
-        width: '100%',
-        position: 'absolute',
-        top: 0,
-        textAlign: 'center',
-        fontFamily: 'Arial, Helvetica, sans-serif',
-        color: config['OverlayWidgetFontColor'],
-        fontSize: config['OverlayWidgetFontSize'] + 'px',
-        lineHeight: config['OverlayWidgetHeight'] + 'px',
-      });
-
-      if(currentLevel === 1) {
-        $text.text(config['OverlayWidgetFirstLevelMessage']);
-      }
-      else
-      {
-        $text.text(config['OverlayWidgetCurrentLevelMessage'].replace('{0}', currentLevel));
+    if (time > timerMax) {
+      while (time > timerMax) {
+        currentLevel++;
+        time -= timerMax;
       }
     }
 
-    function Tick() {      
-      var $progress = $('#progress');
-      var $text = $('#text');
-      var percent = (timer * 100) / timerMax;
+    var percent = (time * 100) / timerMax;
 
-      var updateWidgetText = false;
-      while(percent > 100 && currentLevel < levelMax)
-      {
-          percent -= 100;
-          timer -= timerMax;
-          currentLevel++;
-          updateWidgetText = true;
-      }
-
-
-      if(updateWidgetText && currentLevel < levelMax) {
-        //percent = 0;
-        //timer = 0;
-        $progress
-          .hide()
-          .width(`${percent}%`)
-          .show();
-
-        $text.text(config['OverlayWidgetCurrentLevelMessage'].replace('{0}', currentLevel))
-        
-      }
-      else if(currentLevel >= levelMax){
-        $progress.width('100%');
-          clearInterval(interval);
-          interval = null;
-          $text.text(config['OverlayWidgetAllUnlockedMessage'])
-          return;
-      }
-
-      $progress.width(percent + '%');      
-      timer++;
+    if (currentLevel === 1) {
+      $text.innerHTML = config['OverlayWidgetFirstLevelMessage'];
+      $progress.style.width = `${percent}%`;
+    }
+    else if (currentLevel < config['Levels']) {
+      $text.innerHTML = config['OverlayWidgetCurrentLevelMessage'].replace('{0}', currentLevel);
+      $progress.style.width = `${percent}%`;
+    }
+    else if (currentLevel >= config['Levels']) {
+      $text.innerHTML = config['OverlayWidgetAllUnlockedMessage'];
+      $progress.style.width = `100%`;
     }
 
-    function updateWidget(eventData) {
-      console.log(`Progress ${eventData.addMinutes}`)
-      timer += parseInt(`${eventData.addMinutes}`)
-    }
+    setTimeout(() => {      
+      window.location.reload();
+    }, 1000);
 
-    function connectWebsocket() {
-      // Create the websocket connection
-      var socket = new WebSocket("ws://127.0.0.1:3337/streamlabs");
-      // WS OnOpen event : authenticate
-      socket.onopen = function() {
-        // Create authentication payload and request required events
-        var auth = {
-          author: "sc3w",
-          website: "https://sc3w.net",
-          api_key: API_Key,
-          events: [ "LEVELS_UPDATE", "LEVELS_REFRESH" ]
-        };
-        // Send authentication payload to Streamlabs Chatbot
-        socket.send(JSON.stringify(auth));
-      };
-
-      // Ws OnClose : try reconnect
-      socket.onclose = function() {
-        socket = null;
-        setTimeout(connectWebsocket, 5000);
-      };
-
-      // WS OnMessage event : handle events
-      socket.onmessage = function (message) {
-        // Parse message data to extract event name
-        var socketMessage = JSON.parse(message.data);
-        console.log(socketMessage);        
-        if (socketMessage.event == "LEVELS_UPDATE") {
-          var eventData = JSON.parse(socketMessage.data);
-
-          if(eventData.type === "progress"){
-            updateWidget(eventData)
-          }
-          else if(eventData.type === "reload"){
-            location.reload()
-          }
-          else if(eventData.type === "start"){
-            interval = setInterval(Tick, 1000);
-          }
-          else if(eventData.type === "stop"){
-            clearInterval(interval);
-            interval = null;
-          }
-
-        }
-      };
-    };
-    
-    </script>
-
-  </body>
+  </script>
+</body>
 </html>

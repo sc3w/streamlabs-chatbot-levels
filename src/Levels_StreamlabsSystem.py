@@ -7,6 +7,7 @@ import json
 import re
 import time
 import math
+import datetime
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "lib")) #point at lib folder for classes / references
 
@@ -18,6 +19,7 @@ clr.AddReference("IronPython.SQLite.dll")
 clr.AddReference("IronPython.Modules.dll")
 
 from Settings_Module import MySettings
+
 
 #---------------------------
 #   Script Information
@@ -38,7 +40,7 @@ global ScriptSettings
 ScriptSettings = None
 
 global Timer
-Timer = 1
+Timer = 0
 
 global Active
 Active = False
@@ -55,79 +57,51 @@ CurrentLevel = 0
 global CurrentLevelFileName
 CurrentLevelFileName = "Overlays\currentlevel.txt"
 
+global ConfettiStarted
+ConfettiStarted = False
+
 # Compiled regex to verify USERNOTICE and extract tags
 reUserNotice = re.compile(r"(?:^(?:@(?P<irctags>[^\ ]*)\ )?:tmi\.twitch\.tv\ USERNOTICE)")
 
 # Compiled regex to extract bits from IRCv3 Tags
 reBitsUsed = re.compile(r"^@.*?bits=(?P<amount>\d*);?")
 
-
 #---------------------------
 #   Script Functions
 #---------------------------
-def GetPercent():
-    global ScriptSettings
-
-    if ScriptSettings.CurrentLevel == ScriptSettings.Levels:
-        return 100
-    
-    relativeTime = Timer / ScriptSettings.CurrentLevel
-
-    return (relativeTime * ScriptSettings.LevelMaxTime) / 100
-
-
-def SendUpdateMessage(extraMinutes):
-    payload = {
-        "type": "progress",
-        "addMinutes": extraMinutes
-    }
+def UpdateTime(extraMinutes):
     global Timer
     Timer += extraMinutes
-    Parent.BroadcastWsEvent("LEVELS_UPDATE",json.dumps(payload))
 
-
-def SendStartTimer():
-    payload = {
-        "type": "start"
-    }
-
-    Parent.BroadcastWsEvent("LEVELS_UPDATE",json.dumps(payload))
+def StartTimer():
     global Active
     Active = True
-    return
 
-
-def SendStopTimer():
-    payload = {
-        "type": "stop"
-    }
-
-    Parent.BroadcastWsEvent("LEVELS_UPDATE",json.dumps(payload))
+def StopTimer():
     global Active
     Active = False
-    return
 
-def RefreshOverlay():
-    payload = {
-        "type": "reload"
-    }
+def ResetTimer():
     global Timer
     global CurrentLevel
     global CurrentLevelFileName
+    global ConfettiStarted
+    global Active
 
     Timer = 0
     CurrentLevel = 0
+    ConfettiStarted = False
+    Active = False 
+
+    WriteTimeToFile(0)
 
     path = os.path.dirname(__file__)
 
     with codecs.open(os.path.join(path, CurrentLevelFileName), "r") as f:
         data = f.read()
 
-    #with open(os.path.join(path, CurrentLevelFileName), "w") as file:
     with codecs.open(os.path.join(path, CurrentLevelFileName), encoding='utf-8-sig', mode='w+') as file:
         file.write("0")
-
-    Parent.BroadcastWsEvent("LEVELS_UPDATE", json.dumps(payload))
 
     return
 
@@ -153,8 +127,6 @@ def Init():
     SettingsFile = os.path.join(os.path.dirname(__file__), "Settings\settings.json")
 
     ScriptSettings = MySettings(SettingsFile)
-
-    TimerTick = time.time()
 
     ScriptSettings.Initialized = True
 
@@ -190,9 +162,8 @@ def Execute(data):
             # Tier 1000 aka 5$ OR Prime
             else:
                 addMinutes = ScriptSettings.Tier1SubProgress * 60
-    
 
-            SendUpdateMessage(addMinutes)
+            UpdateTime(addMinutes)
 
     elif data.IsChatMessage() and data.IsFromTwitch():
 
@@ -203,39 +174,38 @@ def Execute(data):
         if BitsSearch and BitsSearch.group("amount"):
             # local vars
             totalBits = BitsSearch.group("amount")
-            SendUpdateMessage(float(ScriptSettings.BitProgress) * 60 * float(totalBits))
+            UpdateTime(float(ScriptSettings.BitProgress) * 60 * float(totalBits))
         
         elif (data.IsChatMessage() and data.GetParam(0).lower() == "!levels" 
                 and Parent.HasPermission(data.User, "moderator", "")):
 
             if data.GetParam(1).lower() == "tier1":
-               SendUpdateMessage(ScriptSettings.Tier1SubProgress * 60)
+               UpdateTime(ScriptSettings.Tier1SubProgress * 60)
 
             if data.GetParam(1).lower() == "tier2":
-                SendUpdateMessage(ScriptSettings.Tier2SubProgress * 60)
+                UpdateTime(ScriptSettings.Tier2SubProgress * 60)
 
             if data.GetParam(1).lower() == "tier3":
-                SendUpdateMessage(ScriptSettings.Tier3SubProgress * 60)
+                UpdateTime(ScriptSettings.Tier3SubProgress * 60)
 
             if data.GetParam(1).lower() == "dono":
                 donation = float(data.GetParam(2))
-                SendUpdateMessage(ScriptSettings.DonationProgress * 60 * donation)
+                UpdateTime(ScriptSettings.DonationProgress * 60 * donation)
 
             if data.GetParam(1).lower() == "bits":
                 bits = float(data.GetParam(2))
-                SendUpdateMessage(float(ScriptSettings.BitProgress) * bits)
+                UpdateTime(float(ScriptSettings.BitProgress) * bits)
         elif (data.IsChatMessage() and data.GetParam(0).lower() == "!sron"
                 and Parent.HasPermission(data.User, "caster", "")):
-            SendStartTimer()
+            StartTimer()
         elif (data.IsChatMessage() and data.GetParam(0).lower() == "!sroff"
                 and Parent.HasPermission(data.User, "caster", "")):
-            SendStopTimer()
+            StopTimer()
         elif (data.IsChatMessage() and data.GetParam(0).lower() == "!srreset"
                 and Parent.HasPermission(data.User, "caster", "")):
-            RefreshOverlay()
+            ResetTimer()
 
-    return
-
+    return 
 
 def Tick():
 
@@ -249,32 +219,40 @@ def Tick():
 
     global TimerTick
 
-    if TimerTick is None:
+    if TimerTick is None and Active:
         TimerTick = time.time()
 
     if (time.time() - TimerTick >= 1.0 and Active):
+        global Timer
+        Timer += (time.time() - TimerTick)
+        
+        Parent.Log(ScriptName, str(Timer))
+
         TimerTick = time.time()
 
-        global Timer
-        Timer += 1
+        WriteTimeToFile(Timer)
 
         level = int(math.floor(Timer / (ScriptSettings.LevelMaxTime * 60)))
-
+        
         global CurrentLevel
+        global ConfettiStarted
 
         if level >= ScriptSettings.Levels:
             level = ScriptSettings.Levels-1
+            if not ConfettiStarted:
+                ConfettiStarted = True
+                payload = {
+                    "type": "start_confetti"
+                }
+                Parent.BroadcastWsEvent("LEVELS_UPDATE", json.dumps(payload))
 
         if CurrentLevel != level:
             CurrentLevel = level
-            
             
             if (level+1) == ScriptSettings.Levels:
                 Parent.SendTwitchMessage(ScriptSettings.OverlayWidgetAllUnlockedMessage)
             else:
                 Parent.SendTwitchMessage(ScriptSettings.OverlayWidgetCurrentLevelMessage.format(level+1))
-                
-            path = os.path.dirname(__file__)
 
             with codecs.open(os.path.join(path, CurrentLevelFileName), "r") as f:
                 data = f.read()
@@ -282,8 +260,26 @@ def Tick():
             #with open(os.path.join(path, CurrentLevelFileName), "w") as file:
             with codecs.open(os.path.join(path, CurrentLevelFileName), encoding='utf-8-sig', mode='w+') as file:
                 file.write(str(level))
-        
+
+        WatchDonations()
+
+ 
     return
+
+def WriteTimeToFile(timer):
+    path = os.path.dirname(__file__)
+    with codecs.open(os.path.join(path, 'overlay.js'), encoding='utf-8-sig', mode='w+') as file:
+        file.write('var time =' + str(timer) + ';')
+
+def WatchDonations():
+    path = os.path.dirname(__file__)
+
+    with codecs.open(os.path.join(path, 'donations.txt'), "r") as f:
+        data = f.read()
+        if len(data) > 0:
+            UpdateTime(ScriptSettings.DonationProgress * 60 * float(data))
+            with codecs.open(os.path.join(path, 'donations.txt'), encoding='utf-8-sig', mode='w+') as file:
+                file.write('')
 
 def ReloadSettings(jsonData):
     global ScriptSettings
