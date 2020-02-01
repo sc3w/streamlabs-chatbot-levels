@@ -13,7 +13,7 @@
     }
 
     .animation {
-      transition: width 1s linear;
+      transition: width 500ms linear;
     }
     
     #track {
@@ -28,6 +28,21 @@
       top: 0;
       text-align: center;
       font-family: Arial, Helvetica, sans-serif;
+      text-shadow: 0px 0px 6px rgba(0,0,0,1),
+                   0px 0px 6px rgba(0,0,0,0.5),
+                   0px 0px 6px rgba(0,0,0,0.5);
+    }
+
+    .level-1 {
+      background: #8BC34A;
+    }
+
+    .level-2 {
+      background: #FFEB3B;
+    }
+
+    .level-3 {
+      background: #F44336;
     }
   </style>
 </head>
@@ -53,7 +68,6 @@
       "OverlayWidgetFontSize": 16,
       "OverlayWidgetFontColor": "rgba(255,255,255,1.0)",
       "OverlayWidgetProgressBarTrackColor": "rgba(0,0,0,1.0)",
-      "OverlayWidgetProgressBarColor": "rgba(255,0,0,1.0)",
       "OverlayWidgetBorderRadius": 5,
       "OverlayWidgetCurrentLevelMessage": "Level {0} unlocked!",
       "OverlayWidgetAllUnlockedMessage": "All levels unlocked!",
@@ -67,7 +81,6 @@
     var $text = document.getElementById('text');
 
     $progress.style.height = config['OverlayWidgetHeight'] + 'px';
-    $progress.style.backgroundColor = config['OverlayWidgetProgressBarColor'];
 
     $track.style.height = config['OverlayWidgetHeight'] + 'px';
     $track.style.backgroundColor = config['OverlayWidgetProgressBarTrackColor'];
@@ -87,20 +100,34 @@
       }
     }
 
+    if (latestTimer > timerMax) {
+      while (latestTimer > timerMax) {
+        latestTimer -= timerMax;
+      }
+    }
+
+    var lastPercent = (latestTimer * 100) / timerMax;
     var percent = (time * 100) / timerMax;
+
+    $progress.className = `animation level-${currentLevel}`;
 
     if (currentLevel === 1) {
       $text.innerHTML = config['OverlayWidgetFirstLevelMessage'];
-      $progress.style.width = `${percent}%`;
+      $progress.style.width = `${lastPercent}%`;
     }
     else if (currentLevel < config['Levels']) {
       $text.innerHTML = config['OverlayWidgetCurrentLevelMessage'].replace('{0}', currentLevel);
-      $progress.style.width = `${percent}%`;
+      $progress.style.width = `${lastPercent}%`;
     }
     else if (currentLevel >= config['Levels']) {
       $text.innerHTML = config['OverlayWidgetAllUnlockedMessage'];
       $progress.style.width = `100%`;
+      percent = 100;
     }
+
+    setTimeout(() => {
+      $progress.style.width = `${percent}%`;
+    }, 0)
 
     setTimeout(() => {      
       window.location.reload();

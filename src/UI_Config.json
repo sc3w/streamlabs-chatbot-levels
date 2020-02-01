@@ -78,13 +78,6 @@
       "tooltip": "The color of the progress bar's track.",
       "group": "Widget Style"
     },
-    "OverlayWidgetProgressBarColor": {
-      "type": "colorpicker",
-      "value": "rgba(255,0,0,1.0)",
-      "label": "Progress bar color",
-      "tooltip": "The color of the progress bar.",
-      "group": "Widget Style"
-    },
     "OverlayWidgetBorderRadius": {
       "type": "numberbox",
       "value": "5",

@@ -42,6 +42,9 @@ ScriptSettings = None
 global Timer
 Timer = 0
 
+global LatestTimer
+LatestTimer = 0
+
 global Active
 Active = False
 
@@ -55,7 +58,7 @@ global CurrentLevel
 CurrentLevel = 0
 
 global CurrentLevelFileName
-CurrentLevelFileName = "Overlays\currentlevel.txt"
+CurrentLevelFileName = "currentlevel.txt"
 
 global ConfettiStarted
 ConfettiStarted = False
@@ -87,8 +90,10 @@ def ResetTimer():
     global CurrentLevelFileName
     global ConfettiStarted
     global Active
+    global LatestTimer
 
     Timer = 0
+    LatestTimer = 0
     CurrentLevel = 0
     ConfettiStarted = False
     Active = False 
@@ -176,7 +181,7 @@ def Execute(data):
             totalBits = BitsSearch.group("amount")
             UpdateTime(float(ScriptSettings.BitProgress) * 60 * float(totalBits))
         
-        elif (data.IsChatMessage() and data.GetParam(0).lower() == "!levels" 
+        elif (data.IsChatMessage() and data.GetParam(0).lower() == "!unlock" 
                 and Parent.HasPermission(data.User, "moderator", "")):
 
             if data.GetParam(1).lower() == "tier1":
@@ -217,12 +222,15 @@ def Tick():
     if not ScriptSettings.Enabled and not ScriptSettings.Initialized:
         return
 
+    if not Active:
+        return
+
     global TimerTick
 
     if TimerTick is None and Active:
         TimerTick = time.time()
 
-    if (time.time() - TimerTick >= 1.0 and Active):
+    if ((time.time() - TimerTick) >= 1.0 and Active):
         global Timer
         Timer += (time.time() - TimerTick)
         
@@ -236,40 +244,50 @@ def Tick():
         
         global CurrentLevel
         global ConfettiStarted
+        global LatestTimer
 
         if level >= ScriptSettings.Levels:
             level = ScriptSettings.Levels-1
-            if not ConfettiStarted:
-                ConfettiStarted = True
-                payload = {
-                    "type": "start_confetti"
-                }
-                Parent.BroadcastWsEvent("LEVELS_UPDATE", json.dumps(payload))
+            
 
         if CurrentLevel != level:
             CurrentLevel = level
-            
+
             if (level+1) == ScriptSettings.Levels:
                 Parent.SendTwitchMessage(ScriptSettings.OverlayWidgetAllUnlockedMessage)
+                if not ConfettiStarted:
+                    ConfettiStarted = True
+                    payload = {
+                        "type": "start_confetti"
+                    }
+                    Parent.BroadcastWsEvent("LEVELS_UPDATE", json.dumps(payload))
             else:
                 Parent.SendTwitchMessage(ScriptSettings.OverlayWidgetCurrentLevelMessage.format(level+1))
 
-            with codecs.open(os.path.join(path, CurrentLevelFileName), "r") as f:
-                data = f.read()
-
-            #with open(os.path.join(path, CurrentLevelFileName), "w") as file:
-            with codecs.open(os.path.join(path, CurrentLevelFileName), encoding='utf-8-sig', mode='w+') as file:
-                file.write(str(level))
+            WriteLevelToFile(level)
 
         WatchDonations()
 
  
     return
 
+def WriteLevelToFile(level):
+    path = os.path.dirname(__file__)
+    with codecs.open(os.path.join(path, 'currentlevel.txt'), encoding='utf-8-sig', mode='w+') as file:
+        file.write(str(level))
+
 def WriteTimeToFile(timer):
+    global LatestTimer
+    global CurrentLevel
+    global ScriptSettings
+
+    if (CurrentLevel+1) >= ScriptSettings.Levels:
+        timer = ScriptSettings.LevelMaxTime * 60 * ScriptSettings.Levels
+
     path = os.path.dirname(__file__)
     with codecs.open(os.path.join(path, 'overlay.js'), encoding='utf-8-sig', mode='w+') as file:
-        file.write('var time =' + str(timer) + ';')
+        file.write('var time =' + str(timer) + '; var latestTimer = ' + str(LatestTimer) + ';')
+    LatestTimer = timer
 
 def WatchDonations():
     path = os.path.dirname(__file__)
