@@ -292,7 +292,7 @@ def WriteTimeToFile(timer):
 def WatchDonations():
     path = os.path.dirname(__file__)
 
-    with codecs.open(os.path.join(path, 'donations.txt'), "r") as f:
+    with codecs.open(os.path.join(path, 'donations.txt'), encoding='utf-8-sig', mode='r') as f:
         data = f.read()
         if len(data) > 0:
             UpdateTime(ScriptSettings.DonationProgress * 60 * float(data))
