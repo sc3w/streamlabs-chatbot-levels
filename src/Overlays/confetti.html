@@ -184,7 +184,7 @@
         if (socketMessage.event == "LEVELS_UPDATE") {
           var eventData = JSON.parse(socketMessage.data);
           if (eventData.type === "start_confetti") {
-            startConfetti();
+            setTimeout(startConfetti, 2000);
             setTimeout(stopConfetti, 14000);
           }
         }

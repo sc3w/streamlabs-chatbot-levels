@@ -12,8 +12,8 @@
       padding: 0;
     }
 
-    .animation {
-      transition: width 500ms linear;
+    #progress {
+      transition: all 800ms linear;
     }
     
     #track {
@@ -109,7 +109,14 @@
     var lastPercent = (latestTimer * 100) / timerMax;
     var percent = (time * 100) / timerMax;
 
-    $progress.className = `animation level-${currentLevel}`;
+    if(Math.abs(lastPercent - percent) > 0.5){
+      $progress.className = `animation level-${currentLevel-1}`;
+
+    }
+    else
+    {
+      $progress.className = `animation level-${currentLevel}`;
+    }
 
     if (currentLevel === 1) {
       $text.innerHTML = config['OverlayWidgetFirstLevelMessage'];
@@ -127,6 +134,9 @@
 
     setTimeout(() => {
       $progress.style.width = `${percent}%`;
+      if(Math.abs(lastPercent - percent) > 0.5){
+        $progress.className = `animation level-${currentLevel}`;
+      }
     }, 0)
 
     setTimeout(() => {      
