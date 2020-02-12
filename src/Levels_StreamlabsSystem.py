@@ -179,7 +179,7 @@ def Execute(data):
         if BitsSearch and BitsSearch.group("amount"):
             # local vars
             totalBits = BitsSearch.group("amount")
-            UpdateTime(float(ScriptSettings.BitProgress) * 60 * float(totalBits))
+            UpdateTime(float(ScriptSettings.BitProgress) * float(totalBits))
         
         elif (data.IsChatMessage() and data.GetParam(0).lower() == "!unlock" 
                 and Parent.HasPermission(data.User, "moderator", "")):
