@@ -57,6 +57,9 @@ Levels = 3
 global CurrentLevel
 CurrentLevel = 0
 
+global PreviousLevel
+PreviousLevel = 0
+
 global CurrentLevelFileName
 CurrentLevelFileName = "currentlevel.txt"
 
@@ -95,10 +98,11 @@ def ResetTimer():
     Timer = 0
     LatestTimer = 0
     CurrentLevel = 0
+    PreviousLevel = 0
     ConfettiStarted = False
     Active = False 
 
-    WriteTimeToFile(0)
+    WriteTimeToFile(0, 0)
 
     path = os.path.dirname(__file__)
 
@@ -219,7 +223,7 @@ def Tick():
     if ScriptSettings is None:
         return
 
-    if not ScriptSettings.Enabled and not ScriptSettings.Initialized:
+    if not ScriptSettings.Initialized:
         return
 
     if not Active:
@@ -238,18 +242,17 @@ def Tick():
 
         TimerTick = time.time()
 
-        WriteTimeToFile(Timer)
-
-        level = int(math.floor(Timer / (ScriptSettings.LevelMaxTime * 60)))
-        
         global CurrentLevel
+        global PreviousLevel
         global ConfettiStarted
         global LatestTimer
 
+
+        level = int(math.floor(Timer / (ScriptSettings.LevelMaxTime * 60)))
+        
         if level >= ScriptSettings.Levels:
             level = ScriptSettings.Levels-1
             
-
         if CurrentLevel != level:
             CurrentLevel = level
 
@@ -266,6 +269,9 @@ def Tick():
 
             WriteLevelToFile(level)
 
+        WriteTimeToFile(Timer, CurrentLevel)
+
+
         WatchDonations()
 
  
@@ -276,18 +282,20 @@ def WriteLevelToFile(level):
     with codecs.open(os.path.join(path, 'currentlevel.txt'), encoding='utf-8-sig', mode='w+') as file:
         file.write(str(level))
 
-def WriteTimeToFile(timer):
+def WriteTimeToFile(timer, currentLevel):
     global LatestTimer
-    global CurrentLevel
+    global PreviousLevel
     global ScriptSettings
 
-    if (CurrentLevel+1) >= ScriptSettings.Levels:
+    if (currentLevel+1) >= ScriptSettings.Levels:
         timer = ScriptSettings.LevelMaxTime * 60 * ScriptSettings.Levels
 
     path = os.path.dirname(__file__)
     with codecs.open(os.path.join(path, 'overlay.js'), encoding='utf-8-sig', mode='w+') as file:
-        file.write('var time =' + str(timer) + '; var latestTimer = ' + str(LatestTimer) + ';')
+        file.write('var time =' + str(timer) + '; var latestTimer = ' + str(LatestTimer) + '; var level = ' + str(currentLevel) + '; var prevLevel = ' + str(PreviousLevel) + ';')
+    
     LatestTimer = timer
+    PreviousLevel = currentLevel
 
 def WatchDonations():
     path = os.path.dirname(__file__)

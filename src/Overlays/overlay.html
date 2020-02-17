@@ -33,6 +33,7 @@
                    0px 0px 6px rgba(0,0,0,0.5);
     }
 
+    .level-0,
     .level-1 {
       background: #8BC34A;
     }
@@ -43,6 +44,10 @@
 
     .level-3 {
       background: #F44336;
+    }
+
+    .level-4 {
+      background: blue;
     }
   </style>
 </head>
@@ -109,9 +114,8 @@
     var lastPercent = (latestTimer * 100) / timerMax;
     var percent = (time * 100) / timerMax;
 
-    if(Math.abs(lastPercent - percent) > 0.5){
+    if( level !== prevLevel){
       $progress.className = `animation level-${currentLevel-1}`;
-
     }
     else
     {
@@ -128,15 +132,15 @@
     }
     else if (currentLevel >= config['Levels']) {
       $text.innerHTML = config['OverlayWidgetAllUnlockedMessage'];
-      $progress.style.width = `100%`;
+      //$progress.style.width = `100%`;
       percent = 100;
     }
 
     setTimeout(() => {
-      $progress.style.width = `${percent}%`;
-      if(Math.abs(lastPercent - percent) > 0.5){
+      if(level !== prevLevel){
         $progress.className = `animation level-${currentLevel}`;
       }
+      $progress.style.width = `${percent}%`;
     }, 0)
 
     setTimeout(() => {      
